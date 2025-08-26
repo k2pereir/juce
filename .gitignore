@@ -1,0 +1,17 @@
+# Build outputs
+Builds/
+*.exe
+*.obj
+*.pdb
+*.ilk
+
+# Visual Studio files
+.vs/
+*.vcxproj.user
+*.sln.docstates
+*.suo
+*.user
+
+# Temporary files
+*.tmp
+*.temp

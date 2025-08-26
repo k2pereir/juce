@@ -1,0 +1,4 @@
+so I don't forget how to run things 
+- make changes here 
+- ctrl shift b to build in visual studio 2022
+- ctrl f5 to run
