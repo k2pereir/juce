@@ -3,6 +3,16 @@
 //==============================================================================
 MainComponent::MainComponent()
 {
+    recordButton.setButtonText("Record"); 
+    playButton.setButtonText("Play");
+    stopButton.setButtonText("Stop");
+    recordButton.onClick = [this] { startRecording(); };
+    playButton.onClick = [this] { startPlayback(); }; 
+    stopButton.onClick = [this] { stop(); };
+    addAndMakeVisible(recordButton); 
+    addAndMakeVisible(playButton); 
+    addAndMakeVisible(stopButton); 
+
     // Make sure you set the size of the component after
     // you add any child components.
     setSize (800, 600);
@@ -30,24 +40,52 @@ MainComponent::~MainComponent()
 //==============================================================================
 void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRate)
 {
-    // This function will be called when the audio device is started, or when
-    // its settings (i.e. sample rate, block size, etc) are changed.
-
-    // You can use this function to initialise any resources you might need,
-    // but be careful - it will be called on the audio thread, not the GUI thread.
-
-    // For more details, see the help for AudioProcessor::prepareToPlay()
+    currentSampleRate = sampleRate; 
+    recordedBuffer.setSize(2, (int)(sampleRate * 10.0)); 
+    recordedBuffer.clear(); 
 }
 
 void MainComponent::getNextAudioBlock (const juce::AudioSourceChannelInfo& bufferToFill)
 {
-    // Your audio-processing code goes here!
+    const int numSamples = bufferToFill.numSamples; 
+    if (isRecording && bufferToFill.buffer -> getNumChannels() >= 1)
+    {
+        const int remainingSpace = recordedBuffer.getNumSamples() - recordingPosition; 
+        const int samplesToRecord = juce::jmin(numSamples, remainingSpace); 
 
-    // For more details, see the help for AudioProcessor::getNextAudioBlock()
+        if (samplesToRecord > 0)
+        {
+            for (int channel = 0; channel < juce::jmin(2, bufferToFill.buffer -> getNumChannels()); ++channel)
+            {
+                recordedBuffer.copyFrom(channel, recordingPosition, *bufferToFill.buffer, channel, bufferToFill.startSample, samplesToRecord); 
+            }
+            recordingPosition += samplesToRecord; 
+        }
+    }
 
-    // Right now we are not producing any data, in which case we need to clear the buffer
-    // (to prevent the output of random noise)
-    bufferToFill.clearActiveBufferRegion();
+    if (isPlaying)
+    {
+        const int remainingSamples = recordedBuffer.getNumSamples() - playbackPosition; 
+        const int samplesToPlay = juce::jmin(numSamples, remainingSamples); 
+
+        if (samplesToPlay > 0)
+        {
+            for (int(channel) = 0; channel < bufferToFill.buffer -> getNumChannels(); ++channel)
+            {
+                const int sourceChannel = juce::jmin(channel, recordedBuffer.getNumChannels() - 1); 
+                bufferToFill.buffer -> copyFrom(channel, bufferToFill.startSample, recordedBuffer, sourceChannel, playbackPosition, samplesToPlay);
+            }
+            playbackPosition += samplesToPlay;
+            if (playbackPosition >= recordedBuffer.getNumSamples())
+            {
+                stop(); 
+            }
+        }
+    }
+    else
+    {
+        bufferToFill.clearActiveBufferRegion();
+    }
 }
 
 void MainComponent::releaseResources()
@@ -61,18 +99,47 @@ void MainComponent::releaseResources()
 //==============================================================================
 void MainComponent::paint (juce::Graphics& g)
 {
-    // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
+    
     g.setColour(juce::Colours::white); 
     g.setFont(20.0f);
-    g.drawFittedText("Hello world!", getLocalBounds(), juce::Justification::centred, 1);
-
-    // You can add your drawing code here!
+    g.drawFittedText("hope this works", getLocalBounds().removeFromTop(getHeight() - 120), juce::Justification::centred, 1);
 }
 
 void MainComponent::resized()
 {
-    // This is called when the MainContentComponent is resized.
-    // If you add any child components, this is where you should
-    // update their positions.
+    //these are super off center, I gotta fix that
+    recordButton.setBounds(50, getHeight() - 100, 100, 40);
+    playButton.setBounds(200, getHeight() - 100, 100, 40);
+    stopButton.setBounds(350, getHeight() - 100, 100, 40); 
+}
+
+void MainComponent::startRecording() 
+{
+    if (!isRecording) {
+        recordedBuffer.clear(); 
+        recordingPosition = 0; 
+        isRecording = true; 
+        isPlaying = false; 
+        recordButton.setButtonText("Recording..."); 
+    }
+
+}
+
+void MainComponent::startPlayback()
+{
+    if (!isPlaying && recordedBuffer.getNumSamples() > 0) {
+        playbackPosition = 0; 
+        isPlaying = true; 
+        isRecording = false; 
+        playButton.setButtonText("Playing..."); 
+    }
+}
+
+void MainComponent::stop()
+{
+    isRecording = false; 
+    isPlaying = false; 
+    recordButton.setButtonText("Record"); 
+    playButton.setButtonText("Play"); 
 }

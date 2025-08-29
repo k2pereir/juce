@@ -24,9 +24,23 @@ public:
     void resized() override;
 
 private:
-    //==============================================================================
-    // Your private member variables go here...
+    //recording functionalities
+    juce::AudioBuffer<float> recordedBuffer; 
+    int recordingPosition = 0; 
+    bool isRecording = false; 
+    bool isPlaying = false; 
+    int playbackPosition = 0; 
 
+    //for the ui
+    juce::TextButton recordButton; 
+    juce::TextButton playButton; 
+    juce::TextButton stopButton; 
+
+    double currentSampleRate = 44100.0; 
+
+    void startRecording(); 
+    void startPlayback(); 
+    void stop(); 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };
